@@ -1,0 +1,174 @@
+/* ======================================== */
+/* CONFIGURAÇÕES GLOBAIS E TEMA            */
+/* ======================================== */
+
+/* Importa uma fonte limpa e moderna */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
+
+:root {
+    --ifood-red: #EA1D2C;
+    --dark-text: #333333;
+    --light-text: #555555;
+    --panel-bg: #FFFFFF;
+    --site-bg: #f4f4f8;
+    --border-color: #e0e0e0;
+    --success-green: #008000;
+    --disabled-gray: #cccccc;
+}
+
+body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    margin: 0;
+    padding: 10px; /* Um pequeno padding para o celular */
+    background-color: var(--site-bg);
+    color: var(--dark-text);
+    
+    /* Mobile First: Por padrão, tudo é uma coluna */
+    display: flex;
+    flex-direction: column;
+    align-items: center; /* Centraliza os painéis na página */
+}
+
+h1, h2 {
+    text-align: center;
+    color: var(--ifood-red);
+    margin-top: 0;
+    margin-bottom: 25px;
+}
+
+label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+    color: var(--light-text);
+    font-size: 0.9em;
+}
+
+/* ======================================== */
+/* LAYOUT DOS PAINÉIS                      */
+/* ======================================== */
+
+.panel {
+    background: var(--panel-bg);
+    padding: 25px;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    border: 1px solid var(--border-color);
+    
+    width: 100%; /* Ocupa 100% da tela do celular */
+    max-width: 600px; /* Limite máximo de largura */
+    box-sizing: border-box; /* Garante que o padding não quebre o layout */
+    margin-bottom: 20px;
+}
+
+/* ======================================== */
+/* FORMULÁRIOS E BOTÕES (FOCO NA USABILIDADE) */
+/* ======================================== */
+
+/* Botões e inputs grandes, fáceis de tocar */
+input[type="range"], 
+input[type="number"], 
+button {
+    width: 100%;
+    padding: 15px; /* Padding grande para facilitar o toque */
+    margin-top: 5px;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    box-sizing: border-box;
+    font-size: 1em;
+}
+
+button {
+    background-color: var(--ifood-red);
+    color: white;
+    border: none;
+    cursor: pointer;
+    font-size: 1.1em;
+    font-weight: bold;
+    transition: background-color 0.3s ease;
+    margin-top: 10px;
+}
+
+button:hover {
+    background-color: #d11a28;
+}
+
+/* Botão secundário (Limpar) */
+button.secondary {
+    background-color: var(--light-text);
+}
+button.secondary:hover {
+    background-color: var(--dark-text);
+}
+
+/* Botão desabilitado (buscando GPS) */
+button:disabled {
+    background-color: var(--disabled-gray);
+    cursor: not-allowed;
+}
+
+/* ======================================== */
+/* COMPONENTES ESPECÍFICOS                 */
+/* ======================================== */
+
+/* Mapas */
+#map, #hotspotMap {
+    height: 350px; /* Um pouco menor no celular */
+    width: 100%;
+    border-radius: 8px;
+    margin-top: 20px;
+    border: 1px solid var(--border-color);
+}
+
+/* Gráfico */
+.chart-container {
+    width: 100%;
+    height: 300px;
+    margin-top: 20px;
+}
+
+/* Resultados (Ganhos, Lucro, etc.) */
+.resultado {
+    text-align: center;
+    font-size: 1.5em; /* Fonte grande e legível */
+    font-weight: bold;
+    color: var(--dark-text);
+    margin: 15px 0;
+}
+
+.resultado span.ganho {
+    color: var(--success-green);
+}
+.resultado span.gasto {
+    color: var(--ifood-red);
+}
+
+/* ======================================== */
+/* PORTABILIDADE (RESPONSIVIDADE)          */
+/* ======================================== */
+
+/* * Regra para telas MAIORES (Tablets e Desktops)
+ * Se a tela tiver 900px de largura ou mais...
+ */
+@media (min-width: 900px) {
+    body {
+        /* Muda a direção do flex para lado a lado */
+        flex-direction: row;
+        /* Alinha no topo */
+        align-items: flex-start;
+        /* Permite que os painéis quebrem a linha se não couberem */
+        flex-wrap: wrap;
+        justify-content: center;
+        padding: 20px; /* Mais padding em telas maiores */
+    }
+
+    .panel {
+        /* Em telas grandes, cada painel tenta ocupar o mesmo espaço */
+        flex: 1 1 400px; /* Flex-grow, flex-shrink, flex-basis */
+        margin: 10px;
+    }
+
+    #map, #hotspotMap {
+        height: 400px; /* Mapas podem ser maiores no desktop */
+    }
+}

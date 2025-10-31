@@ -3,112 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ferramentas iFood Entregador</title>
+    <title>Dash do Entregador</title>
     
+    <link rel="stylesheet" href="style.css">
+
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
      crossorigin=""/>
-
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
      integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
      crossorigin=""></script>
-
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-    <style>
-        /* O CSS (estilo) é o mesmo da versão anterior. */
-        /* ... (Vou omitir o CSS aqui para ser breve, mas ele está no seu código) ... */
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            display: flex;
-            justify-content: center;
-            align-items: flex-start;
-            min-height: 100vh;
-            background-color: #f4f4f4;
-            margin: 0;
-            padding: 20px;
-            gap: 20px;
-            flex-wrap: wrap; /* Permite que os painéis quebrem a linha */
-        }
-        .panel {
-            flex: 1; /* Cada painel tenta ocupar o mesmo espaço */
-            min-width: 350px; /* Largura mínima, para telas de celular */
-            max-width: 600px; /* Largura máxima */
-            background: #fff;
-            padding: 25px;
-            border-radius: 12px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-            margin-bottom: 20px;
-        }
-        h1, h2 {
-            text-align: center;
-            color: #EA1D2C; /* Cor do iFood */
-            margin-top: 0;
-            margin-bottom: 20px;
-        }
-        /* Mapas precisam de altura definida */
-        #map, #hotspotMap { 
-            height: 400px; 
-            width: 100%;
-            border-radius: 8px;
-            margin-top: 20px;
-        }
-        .input-group, .slider-container {
-            margin-bottom: 15px;
-        }
-        input[type="range"], input[type="number"], button {
-            width: 100%;
-            padding: 10px;
-            margin-top: 5px;
-            border-radius: 8px;
-            border: 1px solid #ddd;
-            box-sizing: border-box;
-        }
-        button {
-            background-color: #EA1D2C;
-            color: white;
-            border: none;
-            cursor: pointer;
-            font-size: 1em;
-            font-weight: bold;
-            transition: background-color 0.3s ease;
-            margin-top: 10px;
-        }
-        button:hover {
-            background-color: #d11a28;
-        }
-        button.secondary {
-            background-color: #555;
-        }
-        button.secondary:hover {
-            background-color: #333;
-        }
-        /* Desabilita o botão enquanto carrega */
-        button:disabled {
-            background-color: #ccc;
-            cursor: not-allowed;
-        }
-        .resultado {
-            text-align: center;
-            font-size: 1.4em;
-            font-weight: bold;
-            color: #333;
-            margin: 10px 0;
-        }
-        .resultado span.ganho { color: #008000; }
-        .resultado span.gasto { color: #c00; }
-        .chart-container {
-            width: 100%;
-            height: 300px;
-            margin-top: 20px;
-        }
-        label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: bold;
-            color: #555;
-        }
-    </style>
 </head>
 <body>
 
@@ -286,46 +192,33 @@
             localStorage.setItem(STORAGE_KEY, JSON.stringify(savedHotspots));
         }
 
-        // *** AQUI ESTÁ A CORREÇÃO ***
         addHotspotBtn.addEventListener('click', function() {
-            // Desabilita o botão e mostra feedback
             addHotspotBtn.disabled = true;
             addHotspotBtn.textContent = 'Obtendo localização exata...';
 
             if (navigator.geolocation) {
-                // Pede uma nova localização com ALTA PRECISÃO
                 navigator.geolocation.getCurrentPosition(
                     (position) => {
-                        // SUCESSO!
                         const newCoords = [position.coords.latitude, position.coords.longitude];
-                        
-                        // Guarda esta como a "última localização"
                         lastKnownCoords = newCoords;
 
-                        // Adiciona o marcador NO LOCAL EXATO
                         L.marker(newCoords).addTo(hotspotMap)
                             .bindPopup(`Tocou aqui! (${new Date().toLocaleTimeString()})`)
                             .openPopup();
                         
-                        // Salva os dados
                         savedHotspots.push(newCoords);
                         saveHotspots();
 
-                        // Reativa o botão
                         addHotspotBtn.disabled = false;
                         addHotspotBtn.textContent = 'Recebi uma corrida aqui!';
                     },
                     (error) => {
-                        // FALHA
                         console.warn(`Erro ao obter localização: ${error.message}`);
                         alert("Não foi possível pegar sua localização exata. Verifique as permissões de GPS e tente novamente.");
-                        
-                        // Reativa o botão
                         addHotspotBtn.disabled = false;
                         addHotspotBtn.textContent = 'Recebi uma corrida aqui!';
                     },
                     {
-                        // Força o GPS a obter uma nova posição (não usar cache)
                         enableHighAccuracy: true,
                         timeout: 10000,
                         maximumAge: 0 
@@ -348,53 +241,47 @@
 
         // --- INICIALIZAÇÃO GERAL (GPS) ---
         document.addEventListener('DOMContentLoaded', () => {
-            if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(
-                    (position) => {
-                        lastKnownCoords = [position.coords.latitude, position.coords.longitude];
-                        initializeMap(lastKnownCoords);
-                    },
-                    (error) => {
-                        console.warn(`Erro no GPS: ${error.message}. Usando Jataí.`);
-                        initializeMap(jataíCoords);
-                    },
-                    { enableHighAccuracy: false } // Posição inicial pode ser menos precisa
-                );
-            } else {
-                console.log("Geolocalização não suportada. Usando Jatí.");
-                initializeMap(jataíCoords);
-            }
-
-            // O mapa de hotspots SÓ será inicializado depois que a primeira localização (do mapa 1) for obtida
-            // (Isso é um ajuste fino, o código anterior também funcionava)
-            // Vamos simplificar e inicializar os dois juntos.
             
-            // NOTE: A inicialização do hotspotMap foi movida para dentro da função de sucesso/erro do GPS.
-            // (EDIT: Vou voltar. É melhor inicializar os dois, mesmo que com Jataí, para a página carregar rápido)
-
-            // Vamos inicializar os dois mapas. O GPS vai atualizar o `lastKnownCoords`
-            // E o botão vai pegar o GPS novo de qualquer forma.
+            // Inicializa os mapas com a coordenada padrão (Jataí)
+            // Eles serão centralizados no usuário assim que o GPS responder
             initializeMap(jataíCoords);
             initializeHotspotMap(jataíCoords);
 
-            // Tenta pegar o GPS de forma assíncrona para atualizar a variável
+            // Tenta pegar o GPS para centralizar os mapas
             if (navigator.geolocation) {
                 navigator.geolocation.getCurrentPosition(
                     (position) => {
+                        // SUCESSO com GPS
                         lastKnownCoords = [position.coords.latitude, position.coords.longitude];
+                        
                         // Centraliza os mapas na localização do usuário
                         map.setView(lastKnownCoords, 13);
                         hotspotMap.setView(lastKnownCoords, 13);
+                        
                         // Atualiza o círculo e marcador do mapa 1
                         circle.setLatLng(lastKnownCoords);
-                        // (Vamos adicionar o marcador do mapa 1 aqui também)
-                        L.marker(lastKnownCoords).addTo(map).bindPopup("Sua localização inicial").openPopup();
+                        // (O marcador do mapa 1 já é adicionado em `initializeMap`)
+                        // Vamos apenas mover o marcador original
+                        map.eachLayer(function(layer) {
+                            if (layer instanceof L.Marker) {
+                                layer.setLatLng(lastKnownCoords);
+                            }
+                        });
+                        
                     },
                     (error) => {
+                        // FALHA no GPS
                         console.warn(`Erro no GPS inicial: ${error.message}. Mapas continuarão em Jataí.`);
+                        // Não precisa fazer nada, os mapas já estão em Jataí
                     },
-                    { enableHighAccuracy: true }
+                    { 
+                        enableHighAccuracy: true,
+                        timeout: 10000 
+                    }
                 );
+            } else {
+                // Navegador não suporta GPS
+                console.log("Geolocalização não suportada. Mapas continuarão em Jataí.");
             }
 
             // Gera as estatísticas iniciais com os valores padrão
