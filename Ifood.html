@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ferramentas iFood Entregador</title>
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+     integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+     crossorigin=""/>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+     integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+     crossorigin=""></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        /* O CSS (estilo) é o mesmo da versão anterior. */
+        /* ... (Vou omitir o CSS aqui para ser breve, mas ele está no seu código) ... */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 20px;
+            gap: 20px;
+            flex-wrap: wrap; /* Permite que os painéis quebrem a linha */
+        }
+        .panel {
+            flex: 1; /* Cada painel tenta ocupar o mesmo espaço */
+            min-width: 350px; /* Largura mínima, para telas de celular */
+            max-width: 600px; /* Largura máxima */
+            background: #fff;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        h1, h2 {
+            text-align: center;
+            color: #EA1D2C; /* Cor do iFood */
+            margin-top: 0;
+            margin-bottom: 20px;
+        }
+        /* Mapas precisam de altura definida */
+        #map, #hotspotMap { 
+            height: 400px; 
+            width: 100%;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+        .input-group, .slider-container {
+            margin-bottom: 15px;
+        }
+        input[type="range"], input[type="number"], button {
+            width: 100%;
+            padding: 10px;
+            margin-top: 5px;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #EA1D2C;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: bold;
+            transition: background-color 0.3s ease;
+            margin-top: 10px;
+        }
+        button:hover {
+            background-color: #d11a28;
+        }
+        button.secondary {
+            background-color: #555;
+        }
+        button.secondary:hover {
+            background-color: #333;
+        }
+        /* Desabilita o botão enquanto carrega */
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        .resultado {
+            text-align: center;
+            font-size: 1.4em;
+            font-weight: bold;
+            color: #333;
+            margin: 10px 0;
+        }
+        .resultado span.ganho { color: #008000; }
+        .resultado span.gasto { color: #c00; }
+        .chart-container {
+            width: 100%;
+            height: 300px;
+            margin-top: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="panel">
+        <h1>Calculadora de Ganhos e Raio</h1>
+        <div class="slider-container">
+            <label for="kmSlider">Distância (km): <strong id="kmValue">3.75 km</strong></label>
+            <input type="range" id="kmSlider" min="3.75" max="50" step="0.25" value="3.75">
+        </div>
+        <div class="resultado">
+            Ganho Bruto: <span class="ganho" id="earningsValue">R$ 7.50</span>
+        </div>
+        <div id="map"></div>
+    </div>
+
+    <div class="panel">
+        <h2>Análise de Saldo</h2>
+        <div class="input-group">
+            <label for="totalGanho">Total Ganho (R$):</label>
+            <input type="number" id="totalGanho" value="1500.00" min="0" step="0.01">
+        </div>
+        <div class="input-group">
+            <label for="totalGastos">Total Gastos (Gasolina, etc.) (R$):</label>
+            <input type="number" id="totalGastos" value="300.00" min="0" step="0.01">
+        </div>
+        <div class="input-group">
+            <label for="totalCorridas">Total de Corridas:</label>
+            <input type="number" id="totalCorridas" value="100" min="0">
+        </div>
+        <div class="input-group">
+            <label for="corridasCurtaDistancia">Corridas Curta Distância (até 5km):</label>
+            <input type="number" id="corridasCurtaDistancia" value="60" min="0">
+        </div>
+        <div class="input-group">
+            <label for="corridasLongaDistancia">Corridas Longa Distância (acima de 5km):</label>
+            <input type="number" id="corridasLongaDistancia" value="40" min="0">
+        </div>
+        <button id="gerarEstatisticas">Gerar Estatísticas</button>
+        <div class="resultado" id="lucroLiquido"></div>
+        <div class="resultado" id="mediaBrutaPorCorrida"></div>
+        <div class="resultado" id="mediaLiquidaPorCorrida"></div>
+        <div class="chart-container">
+            <canvas id="meuGrafico"></canvas>
+        </div>
+    </div>
+
+    <div class="panel">
+        <h2>Meus Pontos de Coleta</h2>
+        <p>Recebeu um pedido? Clique no botão para marcar no seu mapa pessoal e descobrir onde você mais recebe corridas!</p>
+        <button id="addHotspot">Recebi uma corrida aqui!</button>
+        <button id="clearHotspots" class="secondary">Limpar todos os pontos</button>
+        <div id="hotspotMap"></div>
+    </div>
+
+
+    <script>
+        // --- COORDENADAS PADRÃO (JATAÍ) E GLOBAIS ---
+        const jataíCoords = [-17.8808, -51.7139];
+        // Esta variável agora guarda a "última localização conhecida"
+        let lastKnownCoords = jataíCoords; 
+        const STORAGE_KEY = 'ifood_hotspots';
+
+        // --- PAINEL 1: CALCULADORA DE RAIO ---
+        const kmSlider = document.getElementById('kmSlider');
+        const kmValue = document.getElementById('kmValue');
+        const earningsValue = document.getElementById('earningsValue');
+        const BASE_KM = 3.75;
+        const BASE_RATE = 7.50;
+        const PER_KM_RATE = 1.50;
+        let map;
+        let circle;
+
+        function initializeMap(centerCoords) {
+            if (map) map.remove();
+            map = L.map('map').setView(centerCoords, 13);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+            const initialRadius = BASE_KM * 1000;
+            circle = L.circle(centerCoords, {
+                color: 'red', fillColor: '#f03', fillOpacity: 0.3, radius: initialRadius 
+            }).addTo(map);
+            L.marker(centerCoords).addTo(map).bindPopup("Seu Ponto de Partida").openPopup();
+        }
+
+        kmSlider.addEventListener('input', function() {
+            const km = parseFloat(this.value);
+            kmValue.textContent = `${km.toFixed(2)} km`;
+            let earnings = (km <= BASE_KM) ? BASE_RATE : BASE_RATE + ((km - BASE_KM) * PER_KM_RATE);
+            earningsValue.textContent = `R$ ${earnings.toFixed(2)}`;
+            circle.setRadius(km * 1000);
+        });
+
+        // --- PAINEL 2: ANÁLISE DE SALDO ---
+        const totalCorridasInput = document.getElementById('totalCorridas');
+        const totalGanhoInput = document.getElementById('totalGanho');
+        const totalGastosInput = document.getElementById('totalGastos');
+        const corridasCurtaDistanciaInput = document.getElementById('corridasCurtaDistancia');
+        const corridasLongaDistanciaInput = document.getElementById('corridasLongaDistancia');
+        const gerarEstatisticasBtn = document.getElementById('gerarEstatisticas');
+        const lucroLiquidoDiv = document.getElementById('lucroLiquido');
+
+        const mediaBrutaPorCorridaDiv = document.getElementById('mediaBrutaPorCorrida');
+        const mediaLiquidaPorCorridaDiv = document.getElementById('mediaLiquidaPorCorrida');
+        const ctx = document.getElementById('meuGrafico').getContext('2d');
+        let myChart;
+
+        function createOrUpdateChart(curta, longa) {
+            if (myChart) myChart.destroy();
+            myChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Curta Distância', 'Longa Distância'],
+                    datasets: [{
+                        label: 'Distribuição de Corridas',
+                        data: [curta, longa],
+                        backgroundColor: ['rgba(255, 99, 132, 0.7)', 'rgba(54, 162, 235, 0.7)'],
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false }
+            });
+        }
+
+        gerarEstatisticasBtn.addEventListener('click', function() {
+            const totalCorridas = parseInt(totalCorridasInput.value) || 0;
+            const totalGanho = parseFloat(totalGanhoInput.value) || 0;
+            const totalGastos = parseFloat(totalGastosInput.value) || 0;
+            const corridasCurta = parseInt(corridasCurtaDistanciaInput.value) || 0;
+            const corridasLonga = parseInt(corridasLongaDistanciaInput.value) || 0;
+            const totalCorridasCalculado = corridasCurta + corridasLonga;
+
+            if (totalCorridas === 0) {
+                alert("Por favor, insira o número total de corridas.");
+                return;
+            }
+            if (totalCorridasCalculado > 0 && totalCorridasCalculado !== totalCorridas) {
+                alert("A soma das corridas de curta e longa distância não bate com o total de corridas!");
+                return;
+            }
+
+            const lucroLiquido = totalGanho - totalGastos;
+            const mediaBruta = totalGanho / totalCorridas;
+            const mediaLiquida = lucroLiquido / totalCorridas;
+
+            lucroLiquidoDiv.innerHTML = `Lucro Líquido: <span class="ganho">R$ ${lucroLiquido.toFixed(2)}</span>`;
+            mediaBrutaPorCorridaDiv.innerHTML = `Média Bruta/Corrida: <span class="ganho">R$ ${mediaBruta.toFixed(2)}</span>`;
+            mediaLiquidaPorCorridaDiv.innerHTML = `Média Líquida/Corrida: <span class="ganho">R$ ${mediaLiquida.toFixed(2)}</span>`;
+
+            if (totalCorridasCalculado > 0) {
+                createOrUpdateChart(corridasCurta, corridasLonga);
+            }
+        });
+
+        // --- PAINEL 3: MAPA DE PONTOS PESSOAIS (COM CORREÇÃO) ---
+        const addHotspotBtn = document.getElementById('addHotspot');
+        const clearHotspotsBtn = document.getElementById('clearHotspots');
+        let hotspotMap;
+        let savedHotspots = [];
+
+        function initializeHotspotMap(centerCoords) {
+            if (hotspotMap) hotspotMap.remove();
+            hotspotMap = L.map('hotspotMap').setView(centerCoords, 13);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(hotspotMap);
+            loadHotspots();
+        }
+
+        function loadHotspots() {
+            const data = localStorage.getItem(STORAGE_KEY);
+            savedHotspots = data ? JSON.parse(data) : [];
+            savedHotspots.forEach(coords => {
+                L.marker(coords).addTo(hotspotMap);
+            });
+        }
+
+        function saveHotspots() {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(savedHotspots));
+        }
+
+        // *** AQUI ESTÁ A CORREÇÃO ***
+        addHotspotBtn.addEventListener('click', function() {
+            // Desabilita o botão e mostra feedback
+            addHotspotBtn.disabled = true;
+            addHotspotBtn.textContent = 'Obtendo localização exata...';
+
+            if (navigator.geolocation) {
+                // Pede uma nova localização com ALTA PRECISÃO
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        // SUCESSO!
+                        const newCoords = [position.coords.latitude, position.coords.longitude];
+                        
+                        // Guarda esta como a "última localização"
+                        lastKnownCoords = newCoords;
+
+                        // Adiciona o marcador NO LOCAL EXATO
+                        L.marker(newCoords).addTo(hotspotMap)
+                            .bindPopup(`Tocou aqui! (${new Date().toLocaleTimeString()})`)
+                            .openPopup();
+                        
+                        // Salva os dados
+                        savedHotspots.push(newCoords);
+                        saveHotspots();
+
+                        // Reativa o botão
+                        addHotspotBtn.disabled = false;
+                        addHotspotBtn.textContent = 'Recebi uma corrida aqui!';
+                    },
+                    (error) => {
+                        // FALHA
+                        console.warn(`Erro ao obter localização: ${error.message}`);
+                        alert("Não foi possível pegar sua localização exata. Verifique as permissões de GPS e tente novamente.");
+                        
+                        // Reativa o botão
+                        addHotspotBtn.disabled = false;
+                        addHotspotBtn.textContent = 'Recebi uma corrida aqui!';
+                    },
+                    {
+                        // Força o GPS a obter uma nova posição (não usar cache)
+                        enableHighAccuracy: true,
+                        timeout: 10000,
+                        maximumAge: 0 
+                    }
+                );
+            } else {
+                alert("Geolocalização não é suportada pelo seu navegador.");
+                addHotspotBtn.disabled = false;
+                addHotspotBtn.textContent = 'Recebi uma corrida aqui!';
+            }
+        });
+
+        clearHotspotsBtn.addEventListener('click', function() {
+            if (confirm("Tem certeza que deseja apagar TODOS os seus pontos salvos? Esta ação não pode ser desfeita.")) {
+                savedHotspots = [];
+                localStorage.removeItem(STORAGE_KEY);
+                initializeHotspotMap(lastKnownCoords); // Recarrega o mapa
+            }
+        });
+
+        // --- INICIALIZAÇÃO GERAL (GPS) ---
+        document.addEventListener('DOMContentLoaded', () => {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        lastKnownCoords = [position.coords.latitude, position.coords.longitude];
+                        initializeMap(lastKnownCoords);
+                    },
+                    (error) => {
+                        console.warn(`Erro no GPS: ${error.message}. Usando Jataí.`);
+                        initializeMap(jataíCoords);
+                    },
+                    { enableHighAccuracy: false } // Posição inicial pode ser menos precisa
+                );
+            } else {
+                console.log("Geolocalização não suportada. Usando Jatí.");
+                initializeMap(jataíCoords);
+            }
+
+            // O mapa de hotspots SÓ será inicializado depois que a primeira localização (do mapa 1) for obtida
+            // (Isso é um ajuste fino, o código anterior também funcionava)
+            // Vamos simplificar e inicializar os dois juntos.
+            
+            // NOTE: A inicialização do hotspotMap foi movida para dentro da função de sucesso/erro do GPS.
+            // (EDIT: Vou voltar. É melhor inicializar os dois, mesmo que com Jataí, para a página carregar rápido)
+
+            // Vamos inicializar os dois mapas. O GPS vai atualizar o `lastKnownCoords`
+            // E o botão vai pegar o GPS novo de qualquer forma.
+            initializeMap(jataíCoords);
+            initializeHotspotMap(jataíCoords);
+
+            // Tenta pegar o GPS de forma assíncrona para atualizar a variável
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        lastKnownCoords = [position.coords.latitude, position.coords.longitude];
+                        // Centraliza os mapas na localização do usuário
+                        map.setView(lastKnownCoords, 13);
+                        hotspotMap.setView(lastKnownCoords, 13);
+                        // Atualiza o círculo e marcador do mapa 1
+                        circle.setLatLng(lastKnownCoords);
+                        // (Vamos adicionar o marcador do mapa 1 aqui também)
+                        L.marker(lastKnownCoords).addTo(map).bindPopup("Sua localização inicial").openPopup();
+                    },
+                    (error) => {
+                        console.warn(`Erro no GPS inicial: ${error.message}. Mapas continuarão em Jataí.`);
+                    },
+                    { enableHighAccuracy: true }
+                );
+            }
+
+            // Gera as estatísticas iniciais com os valores padrão
+            gerarEstatisticasBtn.click();
+        });
+    </script>
+
+</body>
+</html>
